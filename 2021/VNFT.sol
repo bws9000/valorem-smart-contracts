@@ -144,7 +144,7 @@ contract VNFT is Context, ERC165, IERC721, IERC721Metadata {
      * @dev See {IERC721-approve}.
      */
     function approve(address to, uint256 tokenId) public virtual override {
-        address owner = ERC721.ownerOf(tokenId);
+        address owner = VNFT.ownerOf(tokenId);
         require(to != owner, "ERC721: approval to current owner");
 
         require(
@@ -304,7 +304,7 @@ contract VNFT is Context, ERC165, IERC721, IERC721Metadata {
             _exists(tokenId),
             "ERC721: operator query for nonexistent token"
         );
-        address owner = ERC721.ownerOf(tokenId);
+        address owner = VNFT.ownerOf(tokenId);
         return (spender == owner ||
             getApproved(tokenId) == spender ||
             isApprovedForAll(owner, spender));
@@ -375,7 +375,7 @@ contract VNFT is Context, ERC165, IERC721, IERC721Metadata {
      * Emits a {Transfer} event.
      */
     function _burn(uint256 tokenId) internal virtual {
-        address owner = ERC721.ownerOf(tokenId);
+        address owner = VNFT.ownerOf(tokenId);
 
         _beforeTokenTransfer(owner, address(0), tokenId);
 
@@ -405,8 +405,8 @@ contract VNFT is Context, ERC165, IERC721, IERC721Metadata {
         uint256 tokenId
     ) internal virtual {
         require(
-            ERC721.ownerOf(tokenId) == from,
-            "ERC721: transfer of token that is not own"
+            VNFT.ownerOf(tokenId) == from,
+            "VNFT: transfer of token that is not own"
         );
         require(to != address(0), "ERC721: transfer to the zero address");
 
@@ -429,7 +429,7 @@ contract VNFT is Context, ERC165, IERC721, IERC721Metadata {
      */
     function _approve(address to, uint256 tokenId) internal virtual {
         _tokenApprovals[tokenId] = to;
-        emit Approval(ERC721.ownerOf(tokenId), to, tokenId);
+        emit Approval(VNFT.ownerOf(tokenId), to, tokenId);
     }
 
     /**

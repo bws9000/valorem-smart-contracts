@@ -1,0 +1,6 @@
+# INFURA
+https://ropsten.infura.io/v3/ac951c67852349f1955884d130c1eb1b
+
+# first contract deployment on ropsten
+https://rinkeby.etherscan.io/address/0x6d44cec5a484779e9c11c802783b52d5d0bd7e4f
+0x6d44Cec5A484779E9c11c802783B52d5D0bd7E4F
