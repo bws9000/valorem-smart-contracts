@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./Escrow.sol";
 
@@ -15,10 +16,17 @@ abstract contract ConditionalEscrow is Escrow {
      * implemented by derived contracts.
      * @param payee The destination address of the funds.
      */
-    function withdrawalAllowed(address payee) public view virtual returns (bool);
+    function withdrawalAllowed(address payee)
+        public
+        view
+        virtual
+        returns (bool);
 
     function withdraw(address payable payee) public virtual override {
-        require(withdrawalAllowed(payee), "ConditionalEscrow: payee is not allowed to withdraw");
+        require(
+            withdrawalAllowed(payee),
+            "ConditionalEscrow: payee is not allowed to withdraw"
+        );
         super.withdraw(payee);
     }
 }

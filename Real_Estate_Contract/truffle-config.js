@@ -23,6 +23,10 @@
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
+
+const { projectId, mnemonic } = require('./secrets.json');
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -35,17 +39,25 @@ module.exports = {
    */
 
   networks: {
-    // Useful for testing. The `development` name is special - truffle uses it by default
-    // if it's defined here and no other network is specified at the command line.
-    // You should run a client (like ganache-cli, geth or parity) in a separate terminal
-    // tab if you use this network and you must also set the `host`, `port` and `network_id`
-    // options below to some value.
-    //
+
     development: {
-     host: "127.0.0.1",     // Localhost (default: none)
-     port: 8545,            // Standard Ethereum port (default: none)
-     network_id: "*",       // Any network (default: none)
+      host: "127.0.0.1",     // Localhost (default: none)
+      port: 8545,            // Standard Ethereum port (default: none)
+      network_id: "*",       // Any network (default: none)
     },
+
+
+    // rinkeby: {
+    //   provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${projectId}`),
+    //   network_id: 4,       // Rinkeby's id
+    //   gas: 8500000,
+    //   gasPrice: 1000000000,  // 1 gwei (in wei) (default: 100 gwei)
+    //   confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+    //   timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
+    //   skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
+    // },
+
+
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
@@ -78,21 +90,35 @@ module.exports = {
     // timeout: 100000
   },
 
-  // Configure your compilers
+  //Configure your compilers
   compilers: {
     solc: {
-      version: "^0.8.0",    // Fetch exact version from solc-bin (default: truffle's version)
-       docker: false,        // Use "0.5.1" you've installed locally with docker (default: false)
-       parser: "solcjs", 
-      // settings: {          // See the solidity docs for advice about optimization and evmVersion
-      //  optimizer: {
-      //    enabled: false,
-      //    runs: 200
-      //  },
-      //  evmVersion: "byzantium"
-      // }
+      version: "0.8.7", // A version or constraint - Ex. "^0.5.0"
+      // Can also be set to "native" to use a native solc
+      docker: false, // Use a version obtained through docker
+      parser: "solcjs",  // Leverages solc-js purely for speedy parsing
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200   // Optimize for how many times you intend to run the code
+        },
+        evmVersion: "istanbul" // Default: "istanbul"
+      }
     }
-  },
+  }
+  // compilers: {
+  //   solc: {
+  //     version: "native",    // Fetch exact version from solc-bin (default: truffle's version)
+  //     docker: false,        // Use "0.5.1" you've installed locally with docker (default: false)
+  //     settings: {          // See the solidity docs for advice about optimization and evmVersion
+  //       optimizer: {
+  //         enabled: false,
+  //         runs: 200
+  //       },
+  //       evmVersion: "byzantium"
+  //     }
+  //   }
+  // },
 
   // Truffle DB is currently disabled by default; to enable it, change enabled:
   // false to enabled: true. The default storage location can also be
@@ -105,13 +131,13 @@ module.exports = {
   // $ truffle migrate --reset --compile-all
   //
   // db: {
-    // enabled: false,
-    // host: "127.0.0.1",
-    // adapter: {
-    //   name: "sqlite",
-    //   settings: {
-    //     directory: ".db"
-    //   }
-    // }
+  // enabled: false,
+  // host: "127.0.0.1",
+  // adapter: {
+  //   name: "sqlite",
+  //   settings: {
+  //     directory: ".db"
+  //   }
+  // }
   // }
 };

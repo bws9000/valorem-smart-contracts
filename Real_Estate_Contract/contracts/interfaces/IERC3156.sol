@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 /**
  * @dev Interface of the ERC3156 FlashBorrower, as defined in
@@ -45,7 +46,10 @@ interface IERC3156FlashLender {
      * @param amount The amount of tokens lent.
      * @return The amount of `token` to be charged for the loan, on top of the returned principal.
      */
-    function flashFee(address token, uint256 amount) external view returns (uint256);
+    function flashFee(address token, uint256 amount)
+        external
+        view
+        returns (uint256);
 
     /**
      * @dev Initiate a flash loan.

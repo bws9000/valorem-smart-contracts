@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./math/Math.sol";
 
@@ -17,7 +18,11 @@ library Arrays {
      * `array` is expected to be sorted in ascending order, and to contain no
      * repeated elements.
      */
-    function findUpperBound(uint256[] storage array, uint256 element) internal view returns (uint256) {
+    function findUpperBound(uint256[] storage array, uint256 element)
+        internal
+        view
+        returns (uint256)
+    {
         if (array.length == 0) {
             return 0;
         }

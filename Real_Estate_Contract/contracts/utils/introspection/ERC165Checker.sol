@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./IERC165.sol";
 
@@ -32,9 +33,15 @@ library ERC165Checker {
      *
      * See {IERC165-supportsInterface}.
      */
-    function supportsInterface(address account, bytes4 interfaceId) internal view returns (bool) {
+    function supportsInterface(address account, bytes4 interfaceId)
+        internal
+        view
+        returns (bool)
+    {
         // query support of both ERC165 as per the spec and support of _interfaceId
-        return supportsERC165(account) && _supportsERC165Interface(account, interfaceId);
+        return
+            supportsERC165(account) &&
+            _supportsERC165Interface(account, interfaceId);
     }
 
     /**
@@ -47,11 +54,10 @@ library ERC165Checker {
      *
      * _Available since v3.4._
      */
-    function getSupportedInterfaces(address account, bytes4[] memory interfaceIds)
-        internal
-        view
-        returns (bool[] memory)
-    {
+    function getSupportedInterfaces(
+        address account,
+        bytes4[] memory interfaceIds
+    ) internal view returns (bool[] memory) {
         // an array of booleans corresponding to interfaceIds and whether they're supported or not
         bool[] memory interfaceIdsSupported = new bool[](interfaceIds.length);
 
@@ -59,7 +65,10 @@ library ERC165Checker {
         if (supportsERC165(account)) {
             // query support of each interface in interfaceIds
             for (uint256 i = 0; i < interfaceIds.length; i++) {
-                interfaceIdsSupported[i] = _supportsERC165Interface(account, interfaceIds[i]);
+                interfaceIdsSupported[i] = _supportsERC165Interface(
+                    account,
+                    interfaceIds[i]
+                );
             }
         }
 
@@ -75,7 +84,10 @@ library ERC165Checker {
      *
      * See {IERC165-supportsInterface}.
      */
-    function supportsAllInterfaces(address account, bytes4[] memory interfaceIds) internal view returns (bool) {
+    function supportsAllInterfaces(
+        address account,
+        bytes4[] memory interfaceIds
+    ) internal view returns (bool) {
         // query support of ERC165 itself
         if (!supportsERC165(account)) {
             return false;
@@ -103,9 +115,18 @@ library ERC165Checker {
      * with {supportsERC165}.
      * Interface identification is specified in ERC-165.
      */
-    function _supportsERC165Interface(address account, bytes4 interfaceId) private view returns (bool) {
-        bytes memory encodedParams = abi.encodeWithSelector(IERC165(account).supportsInterface.selector, interfaceId);
-        (bool success, bytes memory result) = account.staticcall{gas: 30000}(encodedParams);
+    function _supportsERC165Interface(address account, bytes4 interfaceId)
+        private
+        view
+        returns (bool)
+    {
+        bytes memory encodedParams = abi.encodeWithSelector(
+            IERC165(account).supportsInterface.selector,
+            interfaceId
+        );
+        (bool success, bytes memory result) = account.staticcall{gas: 30000}(
+            encodedParams
+        );
         if (result.length < 32) return false;
         return success && abi.decode(result, (bool));
     }

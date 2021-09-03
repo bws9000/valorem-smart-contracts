@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./ERC165.sol";
 
@@ -19,8 +20,16 @@ abstract contract ERC165Storage is ERC165 {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return super.supportsInterface(interfaceId) || _supportedInterfaces[interfaceId];
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        return
+            super.supportsInterface(interfaceId) ||
+            _supportedInterfaces[interfaceId];
     }
 
     /**

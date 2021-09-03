@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// https://docs.quadrans.io/programming/solidity_101.html
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./ERC721/ERC721.sol";
 import "./access/AccessControlEnumerable.sol";
@@ -7,6 +9,8 @@ import "./ERC721/extensions/ERC721Enumerable.sol";
 import "./ERC721/extensions/ERC721Burnable.sol";
 import "./ERC721/extensions/ERC721Pausable.sol";
 import "./utils/Counters.sol";
+import "./utils/cryptography/ECDSA.sol";
+import "./access/Ownable.sol";
 
 /**
  * @dev Valorem Real Estate NFT
@@ -20,16 +24,26 @@ contract VContract is
     AccessControlEnumerable,
     ERC721Enumerable,
     ERC721Burnable,
-    ERC721Pausable
+    ERC721Pausable,
+    Ownable
 {
     using Counters for Counters.Counter;
+    using ECDSA for bytes32;
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     string private _baseTokenURI;
+
     Counters.Counter private _tokenIdTracker;
 
     //last token minted
     uint256 private _tokenId;
+
+    //dev mode testing
+    bool private _devMode = true;
+
+    //test number
+    uint256 private _testNumber;
 
     /**
      * @dev Property details update purchaseAmount on transfer
@@ -37,13 +51,27 @@ contract VContract is
     struct Property {
         string URI;
         uint256 currentValue;
-        uint256 valueOnPurchase;
-        uint256 purchasedAmount;
+        uint256 availableValue;
     }
 
-    Property[] public properties;
+    /**
+     * @dev Percentage of property owned
+     */
+    struct Percentage {
+        uint256 percentage;
+    }
+
+    Property[] private properties;
+    Percentage[] private percentages;
+
     //map property to tokenId
     mapping(uint256 => uint256) public propertyToToken;
+
+    //map percentage to tokenId
+    mapping(uint256 => uint256) public percentageToToken;
+
+    //prevent re-runs
+    mapping(address => mapping(uint256 => bool)) usedNonces;
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE` and `PAUSER_ROLE` to the
@@ -62,6 +90,20 @@ contract VContract is
         _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
     }
+
+    function setTestNumber(uint256 bn) external {
+        _testNumber = bn;
+    }
+
+    function getTestNumber() public view returns (uint256) {
+        return _testNumber;
+    }
+
+    // function testCurrency() public pure returns (uint256) {
+    //     uint256 amount = 10 * 10**18;
+    //     uint256 price = 0.5 * 10**18;
+    //     return amount / price;
+    // }
 
     /**
      * @dev Checks mapping for property uri
@@ -83,10 +125,7 @@ contract VContract is
      * returns the last id of minted token
      */
     function lastTokenMinted() public view returns (uint256) {
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "VContract: must have minter role to get last token minted"
-        );
+        // return BN { negative: 0, words: [ 3, <1 empty item> ], length: 1, red: null }
         return _tokenId;
     }
 
@@ -94,20 +133,80 @@ contract VContract is
      * @dev returns baseTokenUri
      */
     function getBaseTokenURI() external view returns (string memory) {
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "VContract: must have minter role to get base token URI"
-        );
         return _baseTokenURI;
+    }
+
+    /**
+     * @dev returns baseTokenUri
+     */
+    function getPropertiesSize() external view returns (uint256 count) {
+        return properties.length;
+    }
+
+    /**
+     * @dev returns property
+     */
+    function getProperty(uint256 tokenId)
+        external
+        view
+        returns (string memory URI, uint256 currentValue)
+    {
+        uint256 _id = propertyToToken[tokenId];
+        Property memory p = properties[_id];
+        return (p.URI, p.currentValue);
+    }
+
+    /**
+     * @dev returns property
+     */
+    function getPropertyCurrentValue(uint256 tokenId)
+        external
+        view
+        returns (uint256 currentValue)
+    {
+        uint256 _id = propertyToToken[tokenId];
+        Property memory p = properties[_id];
+        return p.currentValue;
+    }
+
+    /**
+     * @dev returns property
+     */
+    function getPropertyURI(uint256 tokenId)
+        external
+        view
+        returns (string memory URI)
+    {
+        uint256 _id = propertyToToken[tokenId];
+        Property memory p = properties[_id];
+        return p.URI;
+    }
+
+    /**
+     * @dev returns percentage of property owned
+     */
+    function getPercentage(uint256 tokenId)
+        external
+        view
+        returns (uint256 _percentage)
+    {
+        uint256 _id = percentageToToken[tokenId];
+        Percentage memory p = percentages[_id];
+        return (p.percentage);
     }
 
     /**
      * @dev update _baseTokenURI
      */
-    function updateBaseTokenURI(string memory _uri) external {
+    function updateBaseTokenURI(
+        string memory _uri,
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "VContract: must have minter role to update base token URI"
+            _isOwner(message, nonce, signature),
+            "VContract: Not Authorized to Update Property Uri"
         );
         _baseTokenURI = _uri;
     }
@@ -120,18 +219,35 @@ contract VContract is
         string memory _uri,
         uint256 _currentValue
     ) internal {
-        properties.push(Property(_uri, _currentValue, 0, 0));
+        properties.push(Property(_uri, _currentValue, _currentValue));
         uint256 id = properties.length - 1;
         propertyToToken[tokenId] = id;
     }
 
     /**
+     * @dev private add new property uri to mapping set on mint
+     */
+    function _setPercentageOnMint(uint256 tokenId, uint256 _percentage)
+        internal
+    {
+        percentages.push(Percentage(_percentage));
+        uint256 id = percentages.length - 1;
+        percentageToToken[tokenId] = id;
+    }
+
+    /**
      * @dev update property uri to mapping by minter
      */
-    function updatePropertyURI(uint256 tokenId, string memory _uri) external {
+    function updatePropertyURI(
+        uint256 tokenId,
+        string memory _uri,
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "VContract: must have minter role to update property uri"
+            _isOwner(message, nonce, signature),
+            "VContract: Not Authorized to Update Property Uri"
         );
         uint256 _id = propertyToToken[tokenId];
         Property storage _property = properties[_id];
@@ -148,7 +264,7 @@ contract VContract is
      *
      * Requirements:
      *
-     * - the caller must have the `MINTER_ROLE`.
+     * - the caller must be authorized to mint via _isOwner
      *
      * Extra:
      * - set last token minted: _tokenId
@@ -157,23 +273,33 @@ contract VContract is
     function mint(
         address to,
         string memory _propertyURI,
-        uint256 _currentValue
+        uint256 _currentValue, //ethers.utils.parseUnits(n, 2)
+        uint256 _percentage,
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
     ) public virtual {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "VContract: must have minter role to mint"
+            _isOwner(message, nonce, signature),
+            "VContract: Not Authorized to Mint"
         );
         _mint(to, _tokenIdTracker.current());
         _tokenId = _tokenIdTracker.current();
 
         if (bytes(_propertyURI).length < 1) {
-            _propertyURI = string(abi.encodePacked(_tokenId));
+            _propertyURI = string(abi.encodePacked(_tokenIdTracker.current()));
+            //_propertyURI = string(abi.encodePacked(_tokenId));
         }
         _setPropertyOnMint(
             _tokenIdTracker.current(),
             _propertyURI,
             _currentValue
         );
+        _setPercentageOnMint(
+            _tokenIdTracker.current(),
+            mulScale(_currentValue, _percentage, 100)
+        );
+
         _tokenIdTracker.increment();
     }
 
@@ -183,6 +309,40 @@ contract VContract is
         uint256 tokenId
     ) internal virtual override(ERC721, ERC721Enumerable, ERC721Pausable) {
         super._beforeTokenTransfer(from, to, tokenId);
+    }
+
+    // added for relay services i.e. itx infura
+    // _msgSender not same set in constructor for
+    // future transactions
+    function _isOwner(
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
+    ) internal returns (bool) {
+        if (_devMode) return true;
+        require(!usedNonces[owner()][nonce], "Vcontract: Bad Nonce");
+        address signer = ECDSA.recover(message, signature);
+        if (signer == owner()) {
+            usedNonces[signer][nonce] = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // Calculate x * y / scale rounding down.
+    // https://ethereum.stackexchange.com/questions/55701/how-to-do-solidity-percentage-calculation
+    function mulScale(
+        uint256 x,
+        uint256 y,
+        uint128 scale
+    ) internal pure returns (uint256) {
+        uint256 a = x / scale;
+        uint256 b = x % scale;
+        uint256 c = y / scale;
+        uint256 d = y % scale;
+
+        return a * c * scale + a * d + b * c + (b * d) / scale;
     }
 
     /**

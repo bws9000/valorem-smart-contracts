@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./ECDSA.sol";
 import "../Address.sol";
@@ -23,7 +24,9 @@ library SignatureChecker {
         bytes memory signature
     ) internal view returns (bool) {
         if (Address.isContract(signer)) {
-            try IERC1271(signer).isValidSignature(hash, signature) returns (bytes4 magicValue) {
+            try IERC1271(signer).isValidSignature(hash, signature) returns (
+                bytes4 magicValue
+            ) {
                 return magicValue == IERC1271(signer).isValidSignature.selector;
             } catch {
                 return false;

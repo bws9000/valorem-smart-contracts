@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+//pragma solidity ^0.8.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 /**
  * @dev Interface for an ERC1820 implementer, as defined in the
@@ -15,5 +16,8 @@ interface IERC1820Implementer {
      *
      * See {IERC1820Registry-setInterfaceImplementer}.
      */
-    function canImplementInterfaceForAddress(bytes32 interfaceHash, address account) external view returns (bytes32);
+    function canImplementInterfaceForAddress(
+        bytes32 interfaceHash,
+        address account
+    ) external view returns (bytes32);
 }
