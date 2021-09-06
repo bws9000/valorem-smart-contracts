@@ -10,6 +10,7 @@ import "./ERC721/extensions/ERC721Burnable.sol";
 import "./ERC721/extensions/ERC721Pausable.sol";
 import "./utils/Counters.sol";
 import "./utils/cryptography/ECDSA.sol";
+import "./utils/math/SafeMath.sol";
 import "./access/Ownable.sol";
 
 /**
@@ -29,6 +30,7 @@ contract VContract is
 {
     using Counters for Counters.Counter;
     using ECDSA for bytes32;
+    using SafeMath for uint256;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -51,7 +53,7 @@ contract VContract is
     struct Property {
         string URI;
         uint256 currentValue;
-        uint256 availableValue;
+        uint256 usedValue;
     }
 
     /**
@@ -89,6 +91,10 @@ contract VContract is
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
+    }
+
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseTokenURI;
     }
 
     function setTestNumber(uint256 bn) external {
@@ -217,11 +223,32 @@ contract VContract is
     function _setPropertyOnMint(
         uint256 tokenId,
         string memory _uri,
-        uint256 _currentValue
+        uint256 _currentValue,
+        uint256 _percentage
     ) internal {
-        properties.push(Property(_uri, _currentValue, _currentValue));
+        properties.push(Property(_uri, _currentValue, _percentage));
         uint256 id = properties.length - 1;
         propertyToToken[tokenId] = id;
+    }
+
+    /**
+     * @dev private add new property uri to mapping set on mint
+     */
+    function _setExistingPropertyOnMint(
+        uint256 tokenId,
+        uint256 propertyIndex,
+        uint256 percentage
+    ) internal returns (bool) {
+        Property storage _property = properties[propertyIndex];
+        uint256 result = _property.usedValue.add(percentage);
+        if (result <= 100) {
+            _property.usedValue = result;
+            properties[propertyIndex] = _property;
+            propertyToToken[tokenId] = propertyIndex;
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -272,6 +299,8 @@ contract VContract is
      */
     function mint(
         address to,
+        bool newProperty, // new or existing property?
+        uint256 propertyIndex, // if existing what index?
         string memory _propertyURI,
         uint256 _currentValue, //ethers.utils.parseUnits(n, 2)
         uint256 _percentage,
@@ -290,11 +319,24 @@ contract VContract is
             _propertyURI = string(abi.encodePacked(_tokenIdTracker.current()));
             //_propertyURI = string(abi.encodePacked(_tokenId));
         }
-        _setPropertyOnMint(
-            _tokenIdTracker.current(),
-            _propertyURI,
-            _currentValue
-        );
+
+        if (newProperty) {
+            _setPropertyOnMint(
+                _tokenIdTracker.current(),
+                _propertyURI,
+                _currentValue,
+                _percentage
+            );
+        } else {
+            require(
+                _setExistingPropertyOnMint(
+                    _tokenIdTracker.current(),
+                    propertyIndex,
+                    _percentage
+                ),
+                "VContract: Percentage Exceeds Availablity"
+            );
+        }
         _setPercentageOnMint(
             _tokenIdTracker.current(),
             mulScale(_currentValue, _percentage, 100)
