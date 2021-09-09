@@ -42,16 +42,13 @@ contract VContract is
     uint256 private _tokenId;
 
     //dev mode testing
-    bool private _devMode = true;
-
-    //test number
-    uint256 private _testNumber;
+    bool private _devMode = false;
 
     /**
      * @dev Property details update purchaseAmount on transfer
      */
     struct Property {
-        string URI;
+        string name;
         uint256 currentValue;
         uint256 usedValue;
     }
@@ -97,42 +94,19 @@ contract VContract is
         return _baseTokenURI;
     }
 
-    function setTestNumber(uint256 bn) external {
-        _testNumber = bn;
-    }
-
-    function getTestNumber() public view returns (uint256) {
-        return _testNumber;
-    }
-
-    // function testCurrency() public pure returns (uint256) {
-    //     uint256 amount = 10 * 10**18;
-    //     uint256 price = 0.5 * 10**18;
-    //     return amount / price;
-    // }
-
     /**
-     * @dev Checks mapping for property uri
-     * that is established on mint. Returns property uri based
+     * @dev Checks mapping for property name
+     * that is established on mint. Returns property name based
      * on token id.
      */
-    function propertyURI(uint256 tokenId)
+    function propertyName(uint256 tokenId)
         public
         view
         virtual
         returns (string memory)
     {
         uint256 _id = propertyToToken[tokenId];
-        return properties[_id].URI;
-    }
-
-    /**
-     * @dev
-     * returns the last id of minted token
-     */
-    function lastTokenMinted() public view returns (uint256) {
-        // return BN { negative: 0, words: [ 3, <1 empty item> ], length: 1, red: null }
-        return _tokenId;
+        return properties[_id].name;
     }
 
     /**
@@ -155,15 +129,19 @@ contract VContract is
     function getProperty(uint256 tokenId)
         external
         view
-        returns (string memory URI, uint256 currentValue)
+        returns (
+            string memory URI,
+            uint256 currentValue,
+            uint256 usedValue
+        )
     {
         uint256 _id = propertyToToken[tokenId];
         Property memory p = properties[_id];
-        return (p.URI, p.currentValue);
+        return (p.name, p.currentValue, p.usedValue);
     }
 
     /**
-     * @dev returns property
+     * @dev returns property currentValue
      */
     function getPropertyCurrentValue(uint256 tokenId)
         external
@@ -176,29 +154,29 @@ contract VContract is
     }
 
     /**
-     * @dev returns property
+     * @dev returns property usedValue (1-100 %)
      */
-    function getPropertyURI(uint256 tokenId)
+    function getPropertyUsedValue(uint256 tokenId)
+        external
+        view
+        returns (uint256 usedValue)
+    {
+        uint256 _id = propertyToToken[tokenId];
+        Property memory p = properties[_id];
+        return p.usedValue;
+    }
+
+    /**
+     * @dev returns property URI
+     */
+    function getPropertyName(uint256 tokenId)
         external
         view
         returns (string memory URI)
     {
         uint256 _id = propertyToToken[tokenId];
         Property memory p = properties[_id];
-        return p.URI;
-    }
-
-    /**
-     * @dev returns percentage of property owned
-     */
-    function getPercentage(uint256 tokenId)
-        external
-        view
-        returns (uint256 _percentage)
-    {
-        uint256 _id = percentageToToken[tokenId];
-        Percentage memory p = percentages[_id];
-        return (p.percentage);
+        return p.name;
     }
 
     /**
@@ -222,11 +200,11 @@ contract VContract is
      */
     function _setPropertyOnMint(
         uint256 tokenId,
-        string memory _uri,
+        string memory _name,
         uint256 _currentValue,
         uint256 _percentage
     ) internal {
-        properties.push(Property(_uri, _currentValue, _percentage));
+        properties.push(Property(_name, _currentValue, _percentage));
         uint256 id = properties.length - 1;
         propertyToToken[tokenId] = id;
     }
@@ -252,6 +230,66 @@ contract VContract is
     }
 
     /**
+     * @dev set percentage value of property
+     */
+    function getPercentageValueOfProperty(uint256 tokenId)
+        external
+        view
+        returns (uint256 percentage)
+    {
+        uint256 _propertyId = propertyToToken[tokenId];
+        Property storage _property = properties[_propertyId];
+        uint256 _currentValue = _property.currentValue;
+
+        uint256 _percentageId = percentageToToken[tokenId];
+        Percentage storage _p = percentages[_percentageId];
+        uint256 _percentage = _p.percentage;
+
+        return mulScale(_currentValue, _percentage, 100);
+    }
+
+    /**
+     * @dev update property currentValue on appraisal
+     */
+    function updatePropertyCurrentValue(
+        uint256 tokenId,
+        uint256 _currentValue,
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
+        require(
+            _isOwner(message, nonce, signature),
+            "VContract: Not Authorized to Update Property Value"
+        );
+        uint256 _id = propertyToToken[tokenId];
+        Property storage _property = properties[_id];
+        _property.currentValue = _currentValue;
+        properties[_id] = _property;
+    }
+
+    /**
+     * @dev update property uri to mapping by minter
+     * TODO: probably not a good idea at this point...
+     */
+    function updatePropertyName(
+        uint256 tokenId,
+        string memory _name,
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
+        require(
+            _isOwner(message, nonce, signature),
+            "VContract: Not Authorized to Update Property Name"
+        );
+        uint256 _id = propertyToToken[tokenId];
+        Property storage _property = properties[_id];
+        _property.name = _name;
+        properties[_id] = _property;
+    }
+
+    /**
      * @dev private add new property uri to mapping set on mint
      */
     function _setPercentageOnMint(uint256 tokenId, uint256 _percentage)
@@ -260,26 +298,6 @@ contract VContract is
         percentages.push(Percentage(_percentage));
         uint256 id = percentages.length - 1;
         percentageToToken[tokenId] = id;
-    }
-
-    /**
-     * @dev update property uri to mapping by minter
-     */
-    function updatePropertyURI(
-        uint256 tokenId,
-        string memory _uri,
-        bytes32 message,
-        uint256 nonce,
-        bytes memory signature
-    ) external {
-        require(
-            _isOwner(message, nonce, signature),
-            "VContract: Not Authorized to Update Property Uri"
-        );
-        uint256 _id = propertyToToken[tokenId];
-        Property storage _property = properties[_id];
-        _property.URI = _uri;
-        properties[_id] = _property;
     }
 
     /**
@@ -301,7 +319,7 @@ contract VContract is
         address to,
         bool newProperty, // new or existing property?
         uint256 propertyIndex, // if existing what index?
-        string memory _propertyURI,
+        string memory _propertyName,
         uint256 _currentValue, //ethers.utils.parseUnits(n, 2)
         uint256 _percentage,
         bytes32 message,
@@ -315,15 +333,10 @@ contract VContract is
         _mint(to, _tokenIdTracker.current());
         _tokenId = _tokenIdTracker.current();
 
-        if (bytes(_propertyURI).length < 1) {
-            _propertyURI = string(abi.encodePacked(_tokenIdTracker.current()));
-            //_propertyURI = string(abi.encodePacked(_tokenId));
-        }
-
         if (newProperty) {
             _setPropertyOnMint(
                 _tokenIdTracker.current(),
-                _propertyURI,
+                _propertyName,
                 _currentValue,
                 _percentage
             );
@@ -336,11 +349,10 @@ contract VContract is
                 ),
                 "VContract: Percentage Exceeds Availablity"
             );
+            Property storage _property = properties[propertyIndex];
+            _currentValue = _property.currentValue;
         }
-        _setPercentageOnMint(
-            _tokenIdTracker.current(),
-            mulScale(_currentValue, _percentage, 100)
-        );
+        _setPercentageOnMint(_tokenIdTracker.current(), _percentage);
 
         _tokenIdTracker.increment();
     }
@@ -372,6 +384,10 @@ contract VContract is
         }
     }
 
+    function getOwner() external view returns (address) {
+        return owner();
+    }
+
     // Calculate x * y / scale rounding down.
     // https://ethereum.stackexchange.com/questions/55701/how-to-do-solidity-percentage-calculation
     function mulScale(
@@ -385,6 +401,15 @@ contract VContract is
         uint256 d = y % scale;
 
         return a * c * scale + a * d + b * c + (b * d) / scale;
+    }
+
+    /**
+     * @dev
+     * returns the last id of minted token
+     */
+    function lastTokenMinted() public view returns (uint256) {
+        // return BN { negative: 0, words: [ 3, <1 empty item> ], length: 1, red: null }
+        return _tokenId;
     }
 
     /**
