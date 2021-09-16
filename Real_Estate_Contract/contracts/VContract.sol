@@ -42,7 +42,7 @@ contract VContract is
     uint256 private _tokenId;
 
     //dev mode testing
-    bool private _devMode = false;
+    bool private _devMode = true;
 
     /**
      * @dev Property details update purchaseAmount on transfer
@@ -60,6 +60,14 @@ contract VContract is
         uint256 percentage;
     }
 
+    struct TokenSaleState {
+        uint256 tokenId;
+        address tokenOwner;
+        uint256 salePrice;
+        bool forSale;
+    }
+
+    TokenSaleState[] private tknSaleState;
     Property[] private properties;
     Percentage[] private percentages;
 
@@ -71,6 +79,9 @@ contract VContract is
 
     //prevent re-runs
     mapping(address => mapping(uint256 => bool)) usedNonces;
+
+    //tokens for sale
+    mapping(uint256 => TokenSaleState) public tokenToSaleState;
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE` and `PAUSER_ROLE` to the
@@ -130,7 +141,7 @@ contract VContract is
         external
         view
         returns (
-            string memory URI,
+            string memory name,
             uint256 currentValue,
             uint256 usedValue
         )
@@ -172,7 +183,7 @@ contract VContract is
     function getPropertyName(uint256 tokenId)
         external
         view
-        returns (string memory URI)
+        returns (string memory name)
     {
         uint256 _id = propertyToToken[tokenId];
         Property memory p = properties[_id];
@@ -219,7 +230,7 @@ contract VContract is
     ) internal returns (bool) {
         Property storage _property = properties[propertyIndex];
         uint256 result = _property.usedValue.add(percentage);
-        if (result <= 100) {
+        if (result <= 10000) {
             _property.usedValue = result;
             properties[propertyIndex] = _property;
             propertyToToken[tokenId] = propertyIndex;
@@ -245,7 +256,8 @@ contract VContract is
         Percentage storage _p = percentages[_percentageId];
         uint256 _percentage = _p.percentage;
 
-        return mulScale(_currentValue, _percentage, 100);
+        uint256 basispoint = _percentage;
+        return calculatePropertyPercentage(_currentValue, basispoint);
     }
 
     /**
@@ -347,7 +359,7 @@ contract VContract is
                     propertyIndex,
                     _percentage
                 ),
-                "VContract: Percentage Exceeds Availablity"
+                "VContract: Property % Exceeds Availablity"
             );
             Property storage _property = properties[propertyIndex];
             _currentValue = _property.currentValue;
@@ -388,19 +400,17 @@ contract VContract is
         return owner();
     }
 
-    // Calculate x * y / scale rounding down.
-    // https://ethereum.stackexchange.com/questions/55701/how-to-do-solidity-percentage-calculation
-    function mulScale(
-        uint256 x,
-        uint256 y,
-        uint128 scale
-    ) internal pure returns (uint256) {
-        uint256 a = x / scale;
-        uint256 b = x % scale;
-        uint256 c = y / scale;
-        uint256 d = y % scale;
-
-        return a * c * scale + a * d + b * c + (b * d) / scale;
+    //https://www.omnicalculator.com/finance/basis-point
+    //https://www.investopedia.com/ask/answers/what-basis-point-bps/
+    // find basis point from percentage by > percentage * 100
+    // .i.e 0.5 * 100 = 50 bps
+    function calculatePropertyPercentage(uint256 amount, uint256 basispoint)
+        internal
+        pure
+        returns (uint256)
+    {
+        //theNumber is never a decimal
+        return amount.mul(basispoint).div(10000); //returns bps add .00
     }
 
     /**
@@ -423,5 +433,51 @@ contract VContract is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function enableTokenSale(
+        uint256 tokenId,
+        uint256 salePrice,
+        bytes32 message,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
+        require(
+            !usedNonces[ownerOf(tokenId)][nonce],
+            "Vcontract: Error Bad Nonce"
+        );
+        address signer = ECDSA.recover(message, signature);
+        require(
+            ownerOf(tokenId) == signer,
+            "VContract: You Don't Own This Token"
+        );
+        usedNonces[signer][nonce] = true;
+        tknSaleState.push(TokenSaleState(tokenId, signer, salePrice, true));
+        emit Approval(signer, address(this), tokenId);
+    }
+
+    function buy(uint256 tokenId) external payable {
+        // 3 % of Sale Price To Contract Owner
+        address payable contractOwner = payable(
+            0x5D591d99547FB4b643559675f78487547454C4B8
+        );
+        address buyer = msg.sender;
+        uint256 paid = msg.value;
+        require(
+            tokenToSaleState[tokenId].forSale,
+            "VContract: Token Not For Sale"
+        );
+        require(
+            getApproved(tokenId) == address(this),
+            "VContract: Token Id Not Approved"
+        );
+        require(
+            tokenToSaleState[tokenId].salePrice >= paid,
+            "VContract: Amount Error, Check Sale Price"
+        );
+        contractOwner.transfer(msg.value / 300);
+        delete tokenToSaleState[tokenId];
+        //transferFrom(ownerOf(tokenId), buyer, tokenId);
+        emit Transfer(ownerOf(tokenId), buyer, tokenId);
     }
 }
