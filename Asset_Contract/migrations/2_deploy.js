@@ -3,5 +3,5 @@
 const VContract = artifacts.require("VContract");
 
 module.exports = function (deployer) {
-  deployer.deploy(VContract, "Valorem", "VNFT", "https://admin.advalorem.io/api/Nft/tokens");
+  deployer.deploy(VContract, "Valorem", "VNFT", "https://admin.advalorem.io/api/Nft/tokens/");
 };

@@ -2,3 +2,4 @@ node_modules
 build
 .DS_Store
 secrets.json
+contracts_one_file

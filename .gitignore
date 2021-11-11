@@ -2,3 +2,5 @@
 TEST_truffle
 truffle
 notes
+DummyMintableERC721
+ChildDummyERC721

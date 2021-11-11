@@ -24,7 +24,7 @@
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
 
-const { projectId, mnemonic } = require('./secrets.json');
+const { privateKey, mnemonic, projectId, etherscanApiKey } = require('./secrets.json');
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 
 module.exports = {
@@ -40,18 +40,43 @@ module.exports = {
 
   networks: {
 
-    development: {
-      host: "127.0.0.1",     // Localhost (default: none)
-      port: 8545,            // Standard Ethereum port (default: none)
-      network_id: "*",       // Any network (default: none)
-    },
+    // development: {
+    //   host: "127.0.0.1",     // Localhost (default: none)
+    //   port: 8545,            // Standard Ethereum port (default: none)
+    //   network_id: "*",       // Any network (default: none)
+    // },
 
-
+    //verify
     // rinkeby: {
-    //   provider: () => new HDWalletProvider(mnemonic, `https://rinkeby.infura.io/v3/${projectId}`),
+    //   provider: () => new HDWalletProvider(
+    //     privateKey, `https://rinkeby.infura.io/v3/${projectId}`
+    //   ),
+    //   network_id: 4,
+    //   gasPrice: 10e9,
+    //   skipDryRun: true
+    // }
+
+
+    //deploy matic
+    // matic: {
+    //   provider: () => new HDWalletProvider(privateKey,
+    //     `https://rpc-mumbai.matic.today`),
+    //   network_id: 80001,
+    //   confirmations: 2,
+    //   timeoutBlocks: 200,
+    //   skipDryRun: true,
+    //   gas: 6000000,
+    //   gasPrice: 10000000000,
+    // },
+
+
+
+    // deploy rinkeby
+    // rinkeby: {
+    //   provider: () => new HDWalletProvider(privateKey, `https://rinkeby.infura.io/v3/${projectId}`),
     //   network_id: 4,       // Rinkeby's id
-    //   gas: 8500000,
-    //   gasPrice: 1000000000,  // 1 gwei (in wei) (default: 100 gwei)
+    //   gas: 9999999,
+    //   gasPrice: 2000000000,  // 1 gwei (in wei) (default: 100 gwei)
     //   confirmations: 2,    // # of confs to wait between deployments. (default: 0)
     //   timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
     //   skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
@@ -140,4 +165,12 @@ module.exports = {
   //   }
   // }
   // }
+
+
+  , plugins: [
+    'truffle-plugin-verify'
+  ],
+  api_keys: {
+    etherscan: etherscanApiKey
+  }
 };
