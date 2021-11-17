@@ -2568,15 +2568,6 @@ contract VFContract is
         uint256 indexed tokenId,
         bytes metaData
     );
-    // bytes newAsset,
-    // bytes assetIndex,
-    // bytes assetName,
-    // bytes currentValue,
-    // bytes percentageIndex,
-    // bytes percentage
-
-    /* VFCONTRACT */
-    /************ */
 
     using Counters for Counters.Counter;
     using ECDSA for bytes32;
@@ -2885,6 +2876,13 @@ contract VFContract is
         _tokenIdTracker.increment();
     }
 
+    /**
+     * @dev ERC721 Token that can be irreversibly burned (destroyed).
+     */
+    function burn(uint256 tokenId) public virtual only(RELAY_ADMIN_ROLE) {
+        _burn(tokenId);
+    }
+
     function calculateAssetPercentage(uint256 amount, uint256 basispoint)
         internal
         pure
@@ -2893,9 +2891,6 @@ contract VFContract is
         //theNumber is never a decimal
         return amount.mul(basispoint).div(10000); //returns bps add .00
     }
-
-    /************ */
-    /* VFCONTRACT */
 
     // This is to support Native meta transactions
     // never use msg.sender directly, use _msgSender() instead
@@ -2997,12 +2992,6 @@ contract VFContract is
             address(0),
             tokenId,
             this.encodeTokenMetadata(tokenId)
-            // this.encodeNewAsset(tokenId),
-            // this.encodeAssetIndex(tokenId),
-            // this.encodeAssetName(tokenId),
-            // this.encodeCurrentValue(tokenId),
-            // this.encodePercentageIndex(tokenId),
-            // this.encodePercentage(tokenId)
         );
 
         _burn(tokenId);

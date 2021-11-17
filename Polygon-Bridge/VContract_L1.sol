@@ -2546,6 +2546,8 @@ contract VFContract is
     ContextMixin
 {
     bytes32 public constant PREDICATE_ROLE = keccak256("PREDICATE_ROLE");
+    bytes32 public constant RELAY_ADMIN_ROLE = keccak256("RELAY_ADMIN_ROLE");
+
     using ECDSA for bytes32;
     using SafeMath for uint256;
 
@@ -2555,6 +2557,7 @@ contract VFContract is
         _setupContractId("VFContract");
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender()); //default polygon example erc721 values
         _setupRole(PREDICATE_ROLE, _msgSender()); //default polygon example erc721 values
+        _setupRole(RELAY_ADMIN_ROLE, _msgSender());
         _initializeEIP712(name_);
     }
 
@@ -2587,6 +2590,13 @@ contract VFContract is
     ) external only(PREDICATE_ROLE) {
         _mint(user, tokenId);
         setTokenMetadata(tokenId, metaData);
+    }
+
+    /**
+     * @dev ERC721 Token that can be irreversibly burned (destroyed).
+     */
+    function burn(uint256 tokenId) public virtual only(RELAY_ADMIN_ROLE) {
+        _burn(tokenId);
     }
 
     /**
